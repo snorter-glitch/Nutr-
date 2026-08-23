@@ -1,0 +1,34 @@
+name: Bootstrap Nutrition Evidence Engine v7.2
+
+on:
+  push:
+    paths:
+      - '.bootstrap/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reconstruct source archive
+        run: |
+          cat .bootstrap/part_* | tr -d '\n' | base64 -d > /tmp/nutrition-v7.2.zip
+          mkdir -p /tmp/nutrition-v7.2
+          unzip -q /tmp/nutrition-v7.2.zip -d /tmp/nutrition-v7.2
+      - name: Replace bootstrap repo with full source
+        run: |
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a /tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2/. .
+      - name: Commit full v7.2 source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Publish Nutrition Evidence Engine v7.2' || exit 0
+          git push origin HEAD:main
