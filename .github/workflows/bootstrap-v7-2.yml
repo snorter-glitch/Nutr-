@@ -15,30 +15,48 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Reconstruct exact validated archive
+
+      - name: Rebuild exact v7.2 archive
         shell: bash
         run: |
-          cat .bootstrap/final_b64/part_*.txt > /tmp/nutrition-v7.2.tar.xz.b64
-          base64 -d /tmp/nutrition-v7.2.tar.xz.b64 > /tmp/nutrition-v7.2.tar.xz
-          echo "bd4a26dfabfec98b7035e8e5792997a0d04f44608c8f03272ecbb077ca42425d  /tmp/nutrition-v7.2.tar.xz" | sha256sum -c -
+          cat \
+            .bootstrap/final8/part_00_fixed.b64 \
+            .bootstrap/final8/part_01.b64 \
+            .bootstrap/final8/part_02.b64 \
+            .bootstrap/final8/part_03.b64 \
+            .bootstrap/final8/part_04.b64 \
+            .bootstrap/final8/part_05.b64 \
+            .bootstrap/final8/part_06.b64 \
+            .bootstrap/final8/part_07.b64 \
+            > /tmp/final-v7.2.b64
+          base64 -d /tmp/final-v7.2.b64 > /tmp/final-v7.2.tar.xz
+          echo "48bc28ef2411e29162277ccacae3ae0d31aadec3e07b3063ae4bfc4039b41aa3  /tmp/final-v7.2.tar.xz" | sha256sum -c -
+
+      - name: Extract final v7.2
+        shell: bash
+        run: |
           mkdir -p /tmp/nutrition-v7.2
-          tar -xJf /tmp/nutrition-v7.2.tar.xz -C /tmp/nutrition-v7.2
+          tar -xJf /tmp/final-v7.2.tar.xz -C /tmp/nutrition-v7.2
+
       - name: Verify packaged source
         shell: bash
         run: |
           SRC=/tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2
           test -f "$SRC/SKILL.md"
           test -f "$SRC/metadata.json"
-          python "$SRC/scripts/validate_pack.py"
-          python "$SRC/scripts/validate_benchmarks.py"
-      - name: Publish full source to main
+          cd "$SRC"
+          python scripts/validate_pack.py
+          python scripts/validate_benchmarks.py
+
+      - name: Publish exact source to main
         shell: bash
         run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
           git checkout -B main origin/main
           find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
           cp -a /tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2/. .
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
           git commit -m 'Publish Nutrition Evidence Engine v7.2'
           git push origin main
