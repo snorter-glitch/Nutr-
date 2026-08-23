@@ -3,8 +3,7 @@ name: Bootstrap Nutrition Evidence Engine v7.2
 on:
   push:
     paths:
-      - '.bootstrap/**'
-  workflow_dispatch:
+      - '.bootstrap/READY'
 
 permissions:
   contents: write
@@ -16,11 +15,27 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Reconstruct source archive
+      - name: Reconstruct Base85 tar.xz source archive
         run: |
-          cat .bootstrap/part_* | tr -d '\n' | base64 -d > /tmp/nutrition-v7.2.zip
+          python - <<'PY'
+          from pathlib import Path
+          import base64
+          parts = sorted(Path('.bootstrap').glob('part_*'))
+          if not parts:
+              raise SystemExit('No bootstrap parts found')
+          encoded = ''.join(p.read_text().strip() for p in parts)
+          raw = base64.b85decode(encoded.encode())
+          Path('/tmp/nutrition-v7.2.tar.xz').write_bytes(raw)
+          print(f'decoded {len(parts)} parts -> {len(raw)} bytes')
+          PY
           mkdir -p /tmp/nutrition-v7.2
-          unzip -q /tmp/nutrition-v7.2.zip -d /tmp/nutrition-v7.2
+          tar -xJf /tmp/nutrition-v7.2.tar.xz -C /tmp/nutrition-v7.2
+      - name: Verify packaged source before publish
+        run: |
+          test -f /tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2/SKILL.md
+          test -f /tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2/metadata.json
+          python /tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2/scripts/validate_pack.py
+          python /tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2/scripts/validate_benchmarks.py
       - name: Replace bootstrap repo with full source
         run: |
           find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
@@ -30,5 +45,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          git commit -m 'Publish Nutrition Evidence Engine v7.2' || exit 0
+          git commit -m 'Publish Nutrition Evidence Engine v7.2'
           git push origin HEAD:main
