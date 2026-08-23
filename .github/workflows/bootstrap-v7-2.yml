@@ -1,6 +1,8 @@
 name: Publish Nutrition Evidence Engine v7.2
 
 on:
+  pull_request:
+    branches: [main]
   push:
     paths:
       - '.bootstrap/READY'
@@ -29,7 +31,7 @@ jobs:
         run: |
           find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
           cp -a /tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2/. .
-      - name: Commit full v7.2 source
+      - name: Commit full v7.2 source to main
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
