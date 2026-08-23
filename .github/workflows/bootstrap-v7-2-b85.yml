@@ -1,0 +1,43 @@
+name: Publish Nutrition Evidence Engine v7.2
+
+on:
+  push:
+    paths:
+      - '.bootstrap/READY'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reconstruct verified source archive
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64
+          parts = sorted(Path('.bootstrap').glob('part_*'))
+          data = ''.join(p.read_text().strip() for p in parts)
+          Path('/tmp/nutrition-v7.2.tar.xz').write_bytes(base64.b85decode(data.encode('ascii')))
+          PY
+          mkdir -p /tmp/nutrition-v7.2
+          tar -xJf /tmp/nutrition-v7.2.tar.xz -C /tmp/nutrition-v7.2
+      - name: Replace bootstrap files with full v7.2 source
+        run: |
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a /tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2/. .
+      - name: Validate before publishing
+        run: |
+          python scripts/validate_pack.py
+          python scripts/validate_benchmarks.py
+      - name: Commit full source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Publish Nutrition Evidence Engine v7.2'
+          git push origin HEAD:main
