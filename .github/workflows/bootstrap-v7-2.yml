@@ -17,8 +17,9 @@ jobs:
           fetch-depth: 0
       - name: Rebuild exact archive
         run: |
-          cat .bootstrap/v72_b64_*.txt | base64 -d > /tmp/v72-final.tar.xz
-          echo "fb95c1153e42dafb68f1cd1af8a7de3cf1329ff312c5b01d2265fe094df38607  /tmp/v72-final.tar.xz" | sha256sum -c -
+          cat .transfer/chunk_* > /tmp/v72-final.tar.xz.b64
+          base64 -d /tmp/v72-final.tar.xz.b64 > /tmp/v72-final.tar.xz
+          echo "31e529dc53f3f60672eca6406bb3c06e6efce58ff068434de4292e8d05aba3cc  /tmp/v72-final.tar.xz" | sha256sum -c -
           mkdir -p /tmp/nutrition-v7.2
           tar -xJf /tmp/v72-final.tar.xz -C /tmp/nutrition-v7.2
       - name: Verify packaged source
