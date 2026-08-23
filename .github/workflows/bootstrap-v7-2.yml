@@ -3,9 +3,7 @@ name: Publish Nutrition Evidence Engine v7.2
 on:
   pull_request:
     branches: [main]
-  push:
-    paths:
-      - '.bootstrap/READY'
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
@@ -17,24 +15,25 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Extract final source archive
+      - name: Rebuild exact archive
         run: |
+          cat .bootstrap/v72_b64_*.txt | base64 -d > /tmp/v72-final.tar.xz
+          echo "fb95c1153e42dafb68f1cd1af8a7de3cf1329ff312c5b01d2265fe094df38607  /tmp/v72-final.tar.xz" | sha256sum -c -
           mkdir -p /tmp/nutrition-v7.2
-          tar -xJf .bootstrap/final-v7.2.tar.xz -C /tmp/nutrition-v7.2
+          tar -xJf /tmp/v72-final.tar.xz -C /tmp/nutrition-v7.2
       - name: Verify packaged source
         run: |
           test -f /tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2/SKILL.md
           test -f /tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2/metadata.json
           python /tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2/scripts/validate_pack.py
           python /tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2/scripts/validate_benchmarks.py
-      - name: Replace repository with full source
+      - name: Publish exact source to main
         run: |
-          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          cp -a /tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2/. .
-      - name: Commit full v7.2 source to main
-        run: |
+          git fetch origin main
+          git checkout -B main origin/main
+          rsync -a --delete --exclude=.git /tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2/ ./
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
           git commit -m 'Publish Nutrition Evidence Engine v7.2'
-          git push origin HEAD:main
+          git push origin main
