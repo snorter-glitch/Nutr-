@@ -1,4 +1,4 @@
-name: Bootstrap Nutrition Evidence Engine v7.2
+name: Publish Nutrition Evidence Engine v7.2
 
 on:
   push:
@@ -9,34 +9,23 @@ permissions:
   contents: write
 
 jobs:
-  bootstrap:
+  publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Reconstruct Base85 tar.xz source archive
+      - name: Extract final source archive
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          import base64
-          parts = sorted(Path('.bootstrap').glob('part_*'))
-          if not parts:
-              raise SystemExit('No bootstrap parts found')
-          encoded = ''.join(p.read_text().strip() for p in parts)
-          raw = base64.b85decode(encoded.encode())
-          Path('/tmp/nutrition-v7.2.tar.xz').write_bytes(raw)
-          print(f'decoded {len(parts)} parts -> {len(raw)} bytes')
-          PY
           mkdir -p /tmp/nutrition-v7.2
-          tar -xJf /tmp/nutrition-v7.2.tar.xz -C /tmp/nutrition-v7.2
-      - name: Verify packaged source before publish
+          tar -xJf .bootstrap/final-v7.2.tar.xz -C /tmp/nutrition-v7.2
+      - name: Verify packaged source
         run: |
           test -f /tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2/SKILL.md
           test -f /tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2/metadata.json
           python /tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2/scripts/validate_pack.py
           python /tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2/scripts/validate_benchmarks.py
-      - name: Replace bootstrap repo with full source
+      - name: Replace repository with full source
         run: |
           find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
           cp -a /tmp/nutrition-v7.2/nutrition-evidence-engine-v7.2/. .
